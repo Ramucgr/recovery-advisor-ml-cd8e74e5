@@ -10,11 +10,11 @@ import {
   FileText,
   TrendingUp,
   Calendar,
-  Bell,
-  Settings,
+  BarChart3,
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { NotificationBell } from "@/components/NotificationBell";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -27,7 +27,7 @@ const navigation = [
   { name: "Rehabilitation", href: "/rehabilitation", icon: Calendar },
   { name: "Predictions", href: "/predictions", icon: TrendingUp },
   { name: "Medical Records", href: "/records", icon: FileText },
-  { name: "Notifications", href: "/notifications", icon: Bell },
+  { name: "Reports", href: "/reports", icon: BarChart3 },
 ];
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
@@ -84,6 +84,9 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto">
+        <div className="flex items-center justify-end gap-2 border-b border-border px-6 py-3">
+          <NotificationBell />
+        </div>
         <div className="container mx-auto p-6">{children}</div>
       </main>
     </div>
