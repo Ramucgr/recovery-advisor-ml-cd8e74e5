@@ -10,6 +10,10 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Athletes from "./pages/Athletes";
 import Injuries from "./pages/Injuries";
+import Rehabilitation from "./pages/Rehabilitation";
+import MedicalRecords from "./pages/MedicalRecords";
+import Predictions from "./pages/Predictions";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +53,46 @@ const App = () => (
                 <ProtectedRoute>
                   <DashboardLayout>
                     <Injuries />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/rehabilitation"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <Rehabilitation />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/records"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <MedicalRecords />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/predictions"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <Predictions />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <Reports />
                   </DashboardLayout>
                 </ProtectedRoute>
               }
