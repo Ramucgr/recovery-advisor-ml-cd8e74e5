@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, User } from "lucide-react";
+import { Plus, User, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 interface Athlete {
@@ -26,6 +27,7 @@ export default function Athletes() {
   const { user } = useAuth();
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [editingAthlete, setEditingAthlete] = useState<Athlete | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     date_of_birth: "",
@@ -37,6 +39,37 @@ export default function Athletes() {
     training_hours_per_week: "",
     fitness_level: "",
   });
+
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      date_of_birth: "",
+      gender: "",
+      height_cm: "",
+      weight_kg: "",
+      sport: "",
+      position: "",
+      training_hours_per_week: "",
+      fitness_level: "",
+    });
+    setEditingAthlete(null);
+  };
+
+  const openEditDialog = (athlete: Athlete) => {
+    setEditingAthlete(athlete);
+    setFormData({
+      name: athlete.name || "",
+      date_of_birth: athlete.date_of_birth || "",
+      gender: athlete.gender || "",
+      height_cm: athlete.height_cm?.toString() || "",
+      weight_kg: athlete.weight_kg?.toString() || "",
+      sport: athlete.sport || "",
+      position: athlete.position || "",
+      training_hours_per_week: athlete.training_hours_per_week?.toString() || "",
+      fitness_level: athlete.fitness_level || "",
+    });
+    setIsOpen(true);
+  };
 
   useEffect(() => {
     loadAthletes();
@@ -59,12 +92,11 @@ export default function Athletes() {
     e.preventDefault();
 
     if (!user?.id) {
-      toast.error("You must be logged in to add an athlete");
+      toast.error("You must be logged in to manage athletes");
       return;
     }
 
-    const { error } = await supabase.from("athletes").insert({
-      user_id: user.id,
+    const athleteData = {
       name: formData.name,
       date_of_birth: formData.date_of_birth,
       gender: formData.gender,
@@ -74,26 +106,47 @@ export default function Athletes() {
       position: formData.position || null,
       training_hours_per_week: parseFloat(formData.training_hours_per_week) || null,
       fitness_level: formData.fitness_level || null,
-    });
+    };
 
-    if (error) {
-      console.error("Insert error:", error);
-      toast.error(`Failed to add athlete: ${error.message}`);
+    if (editingAthlete) {
+      const { error } = await supabase
+        .from("athletes")
+        .update(athleteData)
+        .eq("id", editingAthlete.id);
+
+      if (error) {
+        toast.error(`Failed to update athlete: ${error.message}`);
+      } else {
+        toast.success("Athlete updated successfully");
+        setIsOpen(false);
+        loadAthletes();
+        resetForm();
+      }
     } else {
-      toast.success("Athlete added successfully");
-      setIsOpen(false);
-      loadAthletes();
-      setFormData({
-        name: "",
-        date_of_birth: "",
-        gender: "",
-        height_cm: "",
-        weight_kg: "",
-        sport: "",
-        position: "",
-        training_hours_per_week: "",
-        fitness_level: "",
+      const { error } = await supabase.from("athletes").insert({
+        user_id: user.id,
+        ...athleteData,
       });
+
+      if (error) {
+        toast.error(`Failed to add athlete: ${error.message}`);
+      } else {
+        toast.success("Athlete added successfully");
+        setIsOpen(false);
+        loadAthletes();
+        resetForm();
+      }
+    }
+  };
+
+  const handleDelete = async (athleteId: string) => {
+    const { error } = await supabase.from("athletes").delete().eq("id", athleteId);
+    
+    if (error) {
+      toast.error(`Failed to delete athlete: ${error.message}`);
+    } else {
+      toast.success("Athlete deleted successfully");
+      loadAthletes();
     }
   };
 
@@ -115,7 +168,7 @@ export default function Athletes() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Athletes</h1>
           <p className="text-muted-foreground">Manage athlete profiles and information</p>
         </div>
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
@@ -124,7 +177,7 @@ export default function Athletes() {
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Add New Athlete</DialogTitle>
+              <DialogTitle>{editingAthlete ? "Edit Athlete" : "Add New Athlete"}</DialogTitle>
               <DialogDescription>Enter the athlete's profile information</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -219,7 +272,7 @@ export default function Athletes() {
                 </div>
               </div>
               <Button type="submit" className="w-full">
-                Add Athlete
+                {editingAthlete ? "Update Athlete" : "Add Athlete"}
               </Button>
             </form>
           </DialogContent>
@@ -230,13 +283,41 @@ export default function Athletes() {
         {athletes.map((athlete) => (
           <Card key={athlete.id} className="shadow-card hover:shadow-md transition-shadow">
             <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-primary">
-                  <User className="h-6 w-6 text-white" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-primary">
+                    <User className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">{athlete.name || "Unnamed Athlete"}</CardTitle>
+                    <CardDescription>{athlete.sport}</CardDescription>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-lg">{athlete.name || "Unnamed Athlete"}</CardTitle>
-                  <CardDescription>{athlete.sport}</CardDescription>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" onClick={() => openEditDialog(athlete)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Athlete</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete {athlete.name || "this athlete"}? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(athlete.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
             </CardHeader>
@@ -247,17 +328,27 @@ export default function Athletes() {
                   <span className="font-medium">{calculateAge(athlete.date_of_birth)} years</span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-muted-foreground">Gender:</span>
+                  <span className="font-medium">{athlete.gender || "N/A"}</span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-muted-foreground">Height:</span>
-                  <span className="font-medium">{athlete.height_cm} cm</span>
+                  <span className="font-medium">{athlete.height_cm ? `${athlete.height_cm} cm` : "N/A"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Weight:</span>
-                  <span className="font-medium">{athlete.weight_kg} kg</span>
+                  <span className="font-medium">{athlete.weight_kg ? `${athlete.weight_kg} kg` : "N/A"}</span>
                 </div>
                 {athlete.position && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Position:</span>
                     <span className="font-medium">{athlete.position}</span>
+                  </div>
+                )}
+                {athlete.fitness_level && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Fitness Level:</span>
+                    <span className="font-medium">{athlete.fitness_level}</span>
                   </div>
                 )}
               </div>
