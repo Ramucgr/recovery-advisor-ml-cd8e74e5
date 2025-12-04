@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 interface Athlete {
   id: string;
+  name: string;
   date_of_birth: string;
   gender: string;
   height_cm: number;
@@ -19,7 +20,6 @@ interface Athlete {
   position: string;
   training_hours_per_week: number;
   fitness_level: string;
-  profiles: { full_name: string };
 }
 
 export default function Athletes() {
@@ -27,6 +27,7 @@ export default function Athletes() {
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState({
+    name: "",
     date_of_birth: "",
     gender: "",
     height_cm: "",
@@ -44,13 +45,13 @@ export default function Athletes() {
   const loadAthletes = async () => {
     const { data, error } = await supabase
       .from("athletes")
-      .select("*, profiles!athletes_user_id_fkey(full_name)")
+      .select("*")
       .order("created_at", { ascending: false });
 
     if (error) {
       toast.error("Failed to load athletes");
     } else {
-      setAthletes(data as any || []);
+      setAthletes(data || []);
     }
   };
 
@@ -64,6 +65,7 @@ export default function Athletes() {
 
     const { error } = await supabase.from("athletes").insert({
       user_id: user.id,
+      name: formData.name,
       date_of_birth: formData.date_of_birth,
       gender: formData.gender,
       height_cm: parseFloat(formData.height_cm) || null,
@@ -82,6 +84,7 @@ export default function Athletes() {
       setIsOpen(false);
       loadAthletes();
       setFormData({
+        name: "",
         date_of_birth: "",
         gender: "",
         height_cm: "",
@@ -125,6 +128,16 @@ export default function Athletes() {
               <DialogDescription>Enter the athlete's profile information</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Athlete Name</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Enter athlete's full name"
+                  required
+                />
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="dob">Date of Birth</Label>
@@ -222,7 +235,7 @@ export default function Athletes() {
                   <User className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg">{athlete.profiles?.full_name}</CardTitle>
+                  <CardTitle className="text-lg">{athlete.name || "Unnamed Athlete"}</CardTitle>
                   <CardDescription>{athlete.sport}</CardDescription>
                 </div>
               </div>

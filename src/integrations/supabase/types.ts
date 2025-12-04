@@ -23,6 +23,7 @@ export type Database = {
           height_cm: number | null
           id: string
           medical_conditions: string | null
+          name: string | null
           position: string | null
           sport: string
           training_hours_per_week: number | null
@@ -38,6 +39,7 @@ export type Database = {
           height_cm?: number | null
           id?: string
           medical_conditions?: string | null
+          name?: string | null
           position?: string | null
           sport: string
           training_hours_per_week?: number | null
@@ -53,6 +55,7 @@ export type Database = {
           height_cm?: number | null
           id?: string
           medical_conditions?: string | null
+          name?: string | null
           position?: string | null
           sport?: string
           training_hours_per_week?: number | null
