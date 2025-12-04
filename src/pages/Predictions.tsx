@@ -87,7 +87,7 @@ export default function Predictions() {
     const { error } = await supabase.from("predictions").insert({
       athlete_id: selectedAthlete,
       injury_id: selectedInjury,
-      risk_level: predictionResult.riskLevel,
+      risk_level: predictionResult.riskLevel as any,
       predicted_recovery_days: predictionResult.recoveryDays,
       setback_probability: predictionResult.setbackProbability,
       confidence_score: predictionResult.confidence,
@@ -97,6 +97,7 @@ export default function Predictions() {
 
     if (error) {
       console.error("Error saving prediction:", error);
+      toast.error(`Failed to save prediction: ${error.message}`);
     } else {
       toast.success("Prediction saved successfully");
       loadPredictions();

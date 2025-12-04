@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Injury {
   id: string;
@@ -25,6 +26,7 @@ interface Injury {
 }
 
 export default function Injuries() {
+  const { user } = useAuth();
   const [injuries, setInjuries] = useState<Injury[]>([]);
   const [athletes, setAthletes] = useState<any[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -68,6 +70,11 @@ export default function Injuries() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!user?.id) {
+      toast.error("You must be logged in to record an injury");
+      return;
+    }
+
     const { error } = await supabase.from("injuries").insert([{
       athlete_id: formData.athlete_id,
       injury_type: formData.injury_type,
@@ -76,10 +83,12 @@ export default function Injuries() {
       injury_date: formData.injury_date,
       diagnosis: formData.diagnosis,
       notes: formData.notes,
+      created_by: user.id,
     }]);
 
     if (error) {
-      toast.error("Failed to record injury");
+      console.error("Insert error:", error);
+      toast.error(`Failed to record injury: ${error.message}`);
     } else {
       toast.success("Injury recorded successfully");
       setIsOpen(false);
