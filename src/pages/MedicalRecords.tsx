@@ -195,10 +195,10 @@ export default function MedicalRecords() {
                 </div>
                 <div className="space-y-2">
                   <Label>Related Injury (optional)</Label>
-                  <Select value={formData.injury_id} onValueChange={(v) => setFormData({ ...formData, injury_id: v })}>
+                  <Select value={formData.injury_id || "none"} onValueChange={(v) => setFormData({ ...formData, injury_id: v === "none" ? "" : v })}>
                     <SelectTrigger><SelectValue placeholder="Select injury" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {filteredInjuries.map((inj) => (
                         <SelectItem key={inj.id} value={inj.id}>{inj.injury_type} - {inj.body_location}</SelectItem>
                       ))}
