@@ -105,6 +105,12 @@ export default function MedicalRecords() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!user?.id) {
+      toast.error("You must be logged in to create a medical record");
+      return;
+    }
+
     setUploading(true);
 
     let fileUrl = null;
@@ -125,14 +131,14 @@ export default function MedicalRecords() {
       treatment_plan: formData.treatment_plan,
       notes: formData.notes,
       file_url: fileUrl,
-      doctor_id: user?.id,
+      doctor_id: user.id,
     });
 
     setUploading(false);
 
     if (error) {
-      toast.error("Failed to create medical record");
-      console.error(error);
+      console.error("Insert error:", error);
+      toast.error(`Failed to create medical record: ${error.message}`);
     } else {
       toast.success("Medical record created successfully");
       setIsOpen(false);

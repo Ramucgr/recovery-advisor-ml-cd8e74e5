@@ -57,20 +57,26 @@ export default function Athletes() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!user?.id) {
+      toast.error("You must be logged in to add an athlete");
+      return;
+    }
+
     const { error } = await supabase.from("athletes").insert({
-      user_id: user?.id,
+      user_id: user.id,
       date_of_birth: formData.date_of_birth,
       gender: formData.gender,
-      height_cm: parseFloat(formData.height_cm),
-      weight_kg: parseFloat(formData.weight_kg),
+      height_cm: parseFloat(formData.height_cm) || null,
+      weight_kg: parseFloat(formData.weight_kg) || null,
       sport: formData.sport,
-      position: formData.position,
-      training_hours_per_week: parseFloat(formData.training_hours_per_week),
-      fitness_level: formData.fitness_level,
+      position: formData.position || null,
+      training_hours_per_week: parseFloat(formData.training_hours_per_week) || null,
+      fitness_level: formData.fitness_level || null,
     });
 
     if (error) {
-      toast.error("Failed to add athlete");
+      console.error("Insert error:", error);
+      toast.error(`Failed to add athlete: ${error.message}`);
     } else {
       toast.success("Athlete added successfully");
       setIsOpen(false);

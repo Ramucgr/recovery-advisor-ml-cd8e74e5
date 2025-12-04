@@ -75,7 +75,15 @@ export default function Rehabilitation() {
     const { data, error } = await supabase
       .from("rehab_plans")
       .select(`
-        *,
+        id,
+        plan_name,
+        description,
+        start_date,
+        target_end_date,
+        actual_end_date,
+        status,
+        exercises,
+        athlete_id,
         athletes!inner(profiles!athletes_user_id_fkey(full_name)),
         injuries!inner(injury_type, body_location)
       `)
@@ -115,6 +123,11 @@ export default function Rehabilitation() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!user?.id) {
+      toast.error("You must be logged in to create a rehab plan");
+      return;
+    }
+
     let exercises = null;
     if (formData.exercises) {
       try {
@@ -132,13 +145,13 @@ export default function Rehabilitation() {
       start_date: formData.start_date,
       target_end_date: formData.target_end_date,
       exercises: exercises,
-      created_by: user?.id,
+      created_by: user.id,
       status: "planned",
     });
 
     if (error) {
-      toast.error("Failed to create rehab plan");
-      console.error(error);
+      console.error("Insert error:", error);
+      toast.error(`Failed to create rehab plan: ${error.message}`);
     } else {
       toast.success("Rehab plan created successfully");
       setIsOpen(false);
@@ -159,16 +172,17 @@ export default function Rehabilitation() {
     e.preventDefault();
     if (!selectedPlan) return;
 
-    const athleteData = await supabase
-      .from("athletes")
-      .select("id")
-      .eq("user_id", user?.id)
-      .single();
+    if (!user?.id) {
+      toast.error("You must be logged in to log progress");
+      return;
+    }
+
+    // Get the athlete_id from the selected plan
+    const planAthleteId = (selectedPlan as any).athlete_id;
 
     const { error } = await supabase.from("rehab_progress").insert({
       rehab_plan_id: selectedPlan.id,
-      athlete_id: athleteData.data?.id || selectedPlan.athletes?.profiles ? 
-        (await supabase.from("athletes").select("id").single()).data?.id : null,
+      athlete_id: planAthleteId,
       progress_date: new Date().toISOString().split("T")[0],
       completion_percentage: parseFloat(progressData.completion_percentage),
       pain_level: parseInt(progressData.pain_level),
@@ -176,8 +190,8 @@ export default function Rehabilitation() {
     });
 
     if (error) {
-      toast.error("Failed to log progress");
-      console.error(error);
+      console.error("Insert error:", error);
+      toast.error(`Failed to log progress: ${error.message}`);
     } else {
       toast.success("Progress logged successfully");
       setIsProgressOpen(false);
