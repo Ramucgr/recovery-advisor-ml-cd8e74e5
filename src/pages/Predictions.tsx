@@ -18,7 +18,7 @@ interface Prediction {
   confidence_score: number;
   input_features: any;
   athletes: {
-    profiles: { full_name: string };
+    name: string;
     sport: string;
   };
   injuries: {
@@ -54,13 +54,14 @@ export default function Predictions() {
       .from("predictions")
       .select(`
         *,
-        athletes!inner(profiles!athletes_user_id_fkey(full_name), sport),
-        injuries!inner(injury_type, body_location, severity)
+        athletes(name, sport),
+        injuries(injury_type, body_location, severity)
       `)
       .order("prediction_date", { ascending: false });
 
     if (error) {
       console.error("Error loading predictions:", error);
+      toast.error("Failed to load predictions");
     } else {
       setPredictions(data as any || []);
     }
@@ -69,7 +70,7 @@ export default function Predictions() {
   const loadAthletes = async () => {
     const { data } = await supabase
       .from("athletes")
-      .select("id, user_id, profiles!athletes_user_id_fkey(full_name), sport, fitness_level, training_hours_per_week, weight_kg, height_cm");
+      .select("id, user_id, name, sport, fitness_level, training_hours_per_week, weight_kg, height_cm");
     setAthletes(data || []);
   };
 
@@ -170,7 +171,7 @@ export default function Predictions() {
                 <SelectTrigger><SelectValue placeholder="Select athlete" /></SelectTrigger>
                 <SelectContent>
                   {athletes.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>{a.profiles?.full_name}</SelectItem>
+                    <SelectItem key={a.id} value={a.id}>{a.name || "Unnamed Athlete"}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -235,7 +236,7 @@ export default function Predictions() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-lg">{pred.athletes?.profiles?.full_name}</CardTitle>
+                    <CardTitle className="text-lg">{pred.athletes?.name || "Unknown Athlete"}</CardTitle>
                     <CardDescription>
                       {pred.injuries?.injury_type} - {pred.injuries?.body_location}
                     </CardDescription>

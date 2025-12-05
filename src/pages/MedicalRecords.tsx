@@ -20,7 +20,7 @@ interface MedicalRecord {
   notes: string;
   file_url: string | null;
   athletes: {
-    profiles: { full_name: string };
+    name: string;
   };
   injuries?: {
     injury_type: string;
@@ -57,13 +57,14 @@ export default function MedicalRecords() {
       .from("medical_records")
       .select(`
         *,
-        athletes!inner(profiles!athletes_user_id_fkey(full_name)),
+        athletes(name),
         injuries(injury_type, body_location)
       `)
       .order("record_date", { ascending: false });
 
     if (error) {
       console.error("Error loading medical records:", error);
+      toast.error("Failed to load medical records");
     } else {
       setRecords(data as any || []);
     }
@@ -72,7 +73,7 @@ export default function MedicalRecords() {
   const loadAthletes = async () => {
     const { data } = await supabase
       .from("athletes")
-      .select("id, profiles!athletes_user_id_fkey(full_name)");
+      .select("id, name");
     setAthletes(data || []);
   };
 
@@ -188,7 +189,7 @@ export default function MedicalRecords() {
                     <SelectTrigger><SelectValue placeholder="Select athlete" /></SelectTrigger>
                     <SelectContent>
                       {athletes.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>{a.profiles?.full_name}</SelectItem>
+                        <SelectItem key={a.id} value={a.id}>{a.name || "Unnamed Athlete"}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -270,7 +271,7 @@ export default function MedicalRecords() {
                     <User className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg">{record.athletes?.profiles?.full_name}</CardTitle>
+                    <CardTitle className="text-lg">{record.athletes?.name || "Unknown Athlete"}</CardTitle>
                     <CardDescription className="flex items-center gap-2">
                       <Calendar className="h-3 w-3" />
                       {new Date(record.record_date).toLocaleDateString()}
