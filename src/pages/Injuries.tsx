@@ -21,7 +21,7 @@ interface Injury {
   diagnosis: string;
   status: string;
   athletes: {
-    profiles: { full_name: string };
+    name: string;
   };
 }
 
@@ -48,7 +48,7 @@ export default function Injuries() {
   const loadInjuries = async () => {
     const { data, error } = await supabase
       .from("injuries")
-      .select("*, athletes!inner(profiles!athletes_user_id_fkey(full_name))")
+      .select("*, athletes(name)")
       .order("injury_date", { ascending: false });
 
     if (error) {
@@ -61,10 +61,10 @@ export default function Injuries() {
   const loadAthletes = async () => {
     const { data } = await supabase
       .from("athletes")
-      .select("id, profiles!athletes_user_id_fkey(full_name)")
+      .select("id, name")
       .order("created_at", { ascending: false });
 
-    setAthletes(data as any || []);
+    setAthletes(data || []);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -149,7 +149,7 @@ export default function Injuries() {
                   <SelectContent>
                     {athletes.map((athlete) => (
                       <SelectItem key={athlete.id} value={athlete.id}>
-                        {athlete.profiles?.full_name}
+                        {athlete.name || "Unnamed Athlete"}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -235,7 +235,7 @@ export default function Injuries() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-lg">{injury.athletes?.profiles?.full_name}</CardTitle>
+                  <CardTitle className="text-lg">{injury.athletes?.name || "Unknown Athlete"}</CardTitle>
                   <CardDescription>
                     {injury.injury_type} - {injury.body_location}
                   </CardDescription>
