@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, User, Pencil, Trash2 } from "lucide-react";
+import { Plus, User, Pencil, Trash2, Search, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 interface Athlete {
@@ -28,6 +29,9 @@ export default function Athletes() {
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [editingAthlete, setEditingAthlete] = useState<Athlete | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sportFilter, setSportFilter] = useState<string>("all");
+  const [fitnessFilter, setFitnessFilter] = useState<string>("all");
   const [formData, setFormData] = useState({
     name: "",
     date_of_birth: "",
@@ -161,6 +165,37 @@ export default function Athletes() {
     return age;
   };
 
+  const uniqueSports = useMemo(() => 
+    [...new Set(athletes.map(a => a.sport).filter(Boolean))].sort(),
+    [athletes]
+  );
+
+  const uniqueFitnessLevels = useMemo(() => 
+    [...new Set(athletes.map(a => a.fitness_level).filter(Boolean))].sort(),
+    [athletes]
+  );
+
+  const filteredAthletes = useMemo(() => {
+    return athletes.filter(athlete => {
+      const matchesSearch = searchQuery === "" || 
+        (athlete.name?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (athlete.sport?.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      const matchesSport = sportFilter === "all" || athlete.sport === sportFilter;
+      const matchesFitness = fitnessFilter === "all" || athlete.fitness_level === fitnessFilter;
+      
+      return matchesSearch && matchesSport && matchesFitness;
+    });
+  }, [athletes, searchQuery, sportFilter, fitnessFilter]);
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setSportFilter("all");
+    setFitnessFilter("all");
+  };
+
+  const hasActiveFilters = searchQuery !== "" || sportFilter !== "all" || fitnessFilter !== "all";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -279,8 +314,56 @@ export default function Athletes() {
         </Dialog>
       </div>
 
+      {/* Search and Filter Bar */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name or sport..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={sportFilter} onValueChange={setSportFilter}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Filter by sport" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sports</SelectItem>
+            {uniqueSports.map(sport => (
+              <SelectItem key={sport} value={sport}>{sport}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={fitnessFilter} onValueChange={setFitnessFilter}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Filter by fitness" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Fitness Levels</SelectItem>
+            {uniqueFitnessLevels.map(level => (
+              <SelectItem key={level} value={level}>{level}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {hasActiveFilters && (
+          <Button variant="outline" onClick={clearFilters} className="gap-2">
+            <X className="h-4 w-4" />
+            Clear
+          </Button>
+        )}
+      </div>
+
+      {/* Results count */}
+      {hasActiveFilters && (
+        <p className="text-sm text-muted-foreground">
+          Showing {filteredAthletes.length} of {athletes.length} athletes
+        </p>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {athletes.map((athlete) => (
+        {filteredAthletes.map((athlete) => (
           <Card key={athlete.id} className="shadow-card hover:shadow-md transition-shadow">
             <CardHeader>
               <div className="flex items-center justify-between">
