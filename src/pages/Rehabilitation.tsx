@@ -22,8 +22,9 @@ interface RehabPlan {
   actual_end_date: string | null;
   status: string;
   exercises: any;
+  athlete_id: string;
   athletes: {
-    profiles: { full_name: string };
+    name: string;
   };
   injuries: {
     injury_type: string;
@@ -84,13 +85,14 @@ export default function Rehabilitation() {
         status,
         exercises,
         athlete_id,
-        athletes!inner(profiles!athletes_user_id_fkey(full_name)),
-        injuries!inner(injury_type, body_location)
+        athletes(name),
+        injuries(injury_type, body_location)
       `)
       .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error loading rehab plans:", error);
+      toast.error("Failed to load rehab plans");
     } else {
       setRehabPlans(data as any || []);
     }
@@ -99,7 +101,7 @@ export default function Rehabilitation() {
   const loadAthletes = async () => {
     const { data } = await supabase
       .from("athletes")
-      .select("id, profiles!athletes_user_id_fkey(full_name)");
+      .select("id, name");
     setAthletes(data || []);
   };
 
@@ -241,7 +243,7 @@ export default function Rehabilitation() {
                     <SelectTrigger><SelectValue placeholder="Select athlete" /></SelectTrigger>
                     <SelectContent>
                       {athletes.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>{a.profiles?.full_name}</SelectItem>
+                        <SelectItem key={a.id} value={a.id}>{a.name || "Unnamed Athlete"}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -294,7 +296,7 @@ export default function Rehabilitation() {
                 <CardTitle className="text-lg">{plan.plan_name}</CardTitle>
                 <Badge className={getStatusColor(plan.status)}>{plan.status}</Badge>
               </div>
-              <CardDescription>{plan.athletes?.profiles?.full_name}</CardDescription>
+              <CardDescription>{plan.athletes?.name || "Unknown Athlete"}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center gap-2 text-sm">
