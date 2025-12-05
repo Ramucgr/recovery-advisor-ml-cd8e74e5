@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, User, Pencil, Trash2, Search, X } from "lucide-react";
+import { Plus, User, Pencil, Trash2, Search, X, ArrowUpDown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 interface Athlete {
@@ -32,6 +32,7 @@ export default function Athletes() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sportFilter, setSportFilter] = useState<string>("all");
   const [fitnessFilter, setFitnessFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("date_desc");
   const [formData, setFormData] = useState({
     name: "",
     date_of_birth: "",
@@ -175,8 +176,8 @@ export default function Athletes() {
     [athletes]
   );
 
-  const filteredAthletes = useMemo(() => {
-    return athletes.filter(athlete => {
+  const filteredAndSortedAthletes = useMemo(() => {
+    const filtered = athletes.filter(athlete => {
       const matchesSearch = searchQuery === "" || 
         (athlete.name?.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (athlete.sport?.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -186,15 +187,38 @@ export default function Athletes() {
       
       return matchesSearch && matchesSport && matchesFitness;
     });
-  }, [athletes, searchQuery, sportFilter, fitnessFilter]);
+
+    return filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "name_asc":
+          return (a.name || "").localeCompare(b.name || "");
+        case "name_desc":
+          return (b.name || "").localeCompare(a.name || "");
+        case "age_asc":
+          return new Date(b.date_of_birth).getTime() - new Date(a.date_of_birth).getTime();
+        case "age_desc":
+          return new Date(a.date_of_birth).getTime() - new Date(b.date_of_birth).getTime();
+        case "sport_asc":
+          return (a.sport || "").localeCompare(b.sport || "");
+        case "sport_desc":
+          return (b.sport || "").localeCompare(a.sport || "");
+        case "date_asc":
+          return new Date(a.date_of_birth).getTime() - new Date(b.date_of_birth).getTime();
+        case "date_desc":
+        default:
+          return new Date(b.date_of_birth).getTime() - new Date(a.date_of_birth).getTime();
+      }
+    });
+  }, [athletes, searchQuery, sportFilter, fitnessFilter, sortBy]);
 
   const clearFilters = () => {
     setSearchQuery("");
     setSportFilter("all");
     setFitnessFilter("all");
+    setSortBy("date_desc");
   };
 
-  const hasActiveFilters = searchQuery !== "" || sportFilter !== "all" || fitnessFilter !== "all";
+  const hasActiveFilters = searchQuery !== "" || sportFilter !== "all" || fitnessFilter !== "all" || sortBy !== "date_desc";
 
   return (
     <div className="space-y-6">
@@ -347,6 +371,22 @@ export default function Athletes() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <ArrowUpDown className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="date_desc">Newest First</SelectItem>
+            <SelectItem value="date_asc">Oldest First</SelectItem>
+            <SelectItem value="name_asc">Name (A-Z)</SelectItem>
+            <SelectItem value="name_desc">Name (Z-A)</SelectItem>
+            <SelectItem value="age_asc">Age (Youngest)</SelectItem>
+            <SelectItem value="age_desc">Age (Oldest)</SelectItem>
+            <SelectItem value="sport_asc">Sport (A-Z)</SelectItem>
+            <SelectItem value="sport_desc">Sport (Z-A)</SelectItem>
+          </SelectContent>
+        </Select>
         {hasActiveFilters && (
           <Button variant="outline" onClick={clearFilters} className="gap-2">
             <X className="h-4 w-4" />
@@ -358,12 +398,12 @@ export default function Athletes() {
       {/* Results count */}
       {hasActiveFilters && (
         <p className="text-sm text-muted-foreground">
-          Showing {filteredAthletes.length} of {athletes.length} athletes
+          Showing {filteredAndSortedAthletes.length} of {athletes.length} athletes
         </p>
       )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredAthletes.map((athlete) => (
+        {filteredAndSortedAthletes.map((athlete) => (
           <Card key={athlete.id} className="shadow-card hover:shadow-md transition-shadow">
             <CardHeader>
               <div className="flex items-center justify-between">
