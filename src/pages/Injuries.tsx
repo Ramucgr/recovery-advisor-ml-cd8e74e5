@@ -194,6 +194,31 @@ export default function Injuries() {
     }
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "active":
+        return "bg-destructive/20 text-destructive border-destructive/30";
+      case "in_treatment":
+        return "bg-warning/20 text-warning-foreground border-warning/30";
+      case "recovered":
+        return "bg-success/20 text-success-foreground border-success/30";
+      case "closed":
+        return "bg-muted text-muted-foreground border-muted-foreground/30";
+      default:
+        return "bg-muted text-muted-foreground border-muted-foreground/30";
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "active": return "Active";
+      case "in_treatment": return "In Treatment";
+      case "recovered": return "Recovered";
+      case "closed": return "Closed";
+      default: return status;
+    }
+  };
+
   const InjuryForm = ({ onSubmit, submitLabel }: { onSubmit: (e: React.FormEvent) => void; submitLabel: string }) => (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
@@ -361,14 +386,34 @@ export default function Injuries() {
                     {injury.severity}
                   </Badge>
                   <Select value={injury.status || "active"} onValueChange={(value) => handleStatusUpdate(injury.id, value)}>
-                    <SelectTrigger className="w-[130px] h-8">
-                      <SelectValue />
+                    <SelectTrigger className={`w-[140px] h-8 border ${getStatusColor(injury.status || "active")}`}>
+                      <SelectValue>{getStatusLabel(injury.status || "active")}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="in_treatment">In Treatment</SelectItem>
-                      <SelectItem value="recovered">Recovered</SelectItem>
-                      <SelectItem value="closed">Closed</SelectItem>
+                      <SelectItem value="active">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-destructive" />
+                          Active
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="in_treatment">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-warning" />
+                          In Treatment
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="recovered">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-success" />
+                          Recovered
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="closed">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-muted-foreground" />
+                          Closed
+                        </span>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   <Button variant="ghost" size="icon" onClick={() => handleEdit(injury)}>
