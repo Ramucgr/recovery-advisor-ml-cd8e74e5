@@ -6,39 +6,47 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, AlertCircle } from "lucide-react";
+import { Plus, AlertCircle, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 
 interface Injury {
   id: string;
+  athlete_id: string;
   injury_type: string;
   body_location: string;
   severity: string;
   injury_date: string;
   diagnosis: string;
   status: string;
+  notes: string;
   athletes: {
     name: string;
   };
 }
+
+const initialFormData = {
+  athlete_id: "",
+  injury_type: "",
+  body_location: "",
+  severity: "moderate",
+  injury_date: "",
+  diagnosis: "",
+  notes: "",
+};
 
 export default function Injuries() {
   const { user } = useAuth();
   const [injuries, setInjuries] = useState<Injury[]>([]);
   const [athletes, setAthletes] = useState<any[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    athlete_id: "",
-    injury_type: "",
-    body_location: "",
-    severity: "moderate",
-    injury_date: "",
-    diagnosis: "",
-    notes: "",
-  });
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editingInjury, setEditingInjury] = useState<Injury | null>(null);
+  const [formData, setFormData] = useState(initialFormData);
 
   useEffect(() => {
     loadInjuries();
@@ -93,16 +101,68 @@ export default function Injuries() {
       toast.success("Injury recorded successfully");
       setIsOpen(false);
       loadInjuries();
-      setFormData({
-        athlete_id: "",
-        injury_type: "",
-        body_location: "",
-        severity: "moderate",
-        injury_date: "",
-        diagnosis: "",
-        notes: "",
-      });
+      setFormData(initialFormData);
     }
+  };
+
+  const handleEdit = (injury: Injury) => {
+    setEditingInjury(injury);
+    setFormData({
+      athlete_id: injury.athlete_id,
+      injury_type: injury.injury_type,
+      body_location: injury.body_location,
+      severity: injury.severity,
+      injury_date: injury.injury_date,
+      diagnosis: injury.diagnosis || "",
+      notes: injury.notes || "",
+    });
+    setIsEditOpen(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!editingInjury) return;
+
+    const { error } = await supabase
+      .from("injuries")
+      .update({
+        athlete_id: formData.athlete_id,
+        injury_type: formData.injury_type,
+        body_location: formData.body_location,
+        severity: formData.severity as any,
+        injury_date: formData.injury_date,
+        diagnosis: formData.diagnosis,
+        notes: formData.notes,
+      })
+      .eq("id", editingInjury.id);
+
+    if (error) {
+      toast.error(`Failed to update injury: ${error.message}`);
+    } else {
+      toast.success("Injury updated successfully");
+      setIsEditOpen(false);
+      setEditingInjury(null);
+      loadInjuries();
+      setFormData(initialFormData);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+
+    const { error } = await supabase
+      .from("injuries")
+      .delete()
+      .eq("id", deleteId);
+
+    if (error) {
+      toast.error(`Failed to delete injury: ${error.message}`);
+    } else {
+      toast.success("Injury deleted successfully");
+      loadInjuries();
+    }
+    setDeleteId(null);
   };
 
   const getSeverityColor = (severity: string) => {
@@ -120,6 +180,95 @@ export default function Injuries() {
     }
   };
 
+  const InjuryForm = ({ onSubmit, submitLabel }: { onSubmit: (e: React.FormEvent) => void; submitLabel: string }) => (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="athlete">Athlete</Label>
+        <Select value={formData.athlete_id} onValueChange={(value) => setFormData({ ...formData, athlete_id: value })}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select athlete" />
+          </SelectTrigger>
+          <SelectContent>
+            {athletes.map((athlete) => (
+              <SelectItem key={athlete.id} value={athlete.id}>
+                {athlete.name || "Unnamed Athlete"}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="injury_type">Injury Type</Label>
+          <Input
+            id="injury_type"
+            value={formData.injury_type}
+            onChange={(e) => setFormData({ ...formData, injury_type: e.target.value })}
+            placeholder="e.g., Sprain, Fracture, Strain"
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="body_location">Body Location</Label>
+          <Input
+            id="body_location"
+            value={formData.body_location}
+            onChange={(e) => setFormData({ ...formData, body_location: e.target.value })}
+            placeholder="e.g., Left Ankle, Right Knee"
+            required
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="severity">Severity</Label>
+          <Select value={formData.severity} onValueChange={(value) => setFormData({ ...formData, severity: value })}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="minor">Minor</SelectItem>
+              <SelectItem value="moderate">Moderate</SelectItem>
+              <SelectItem value="severe">Severe</SelectItem>
+              <SelectItem value="critical">Critical</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="injury_date">Injury Date</Label>
+          <Input
+            id="injury_date"
+            type="date"
+            value={formData.injury_date}
+            onChange={(e) => setFormData({ ...formData, injury_date: e.target.value })}
+            required
+          />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="diagnosis">Diagnosis</Label>
+        <Textarea
+          id="diagnosis"
+          value={formData.diagnosis}
+          onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
+          placeholder="Detailed diagnosis..."
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="notes">Additional Notes</Label>
+        <Textarea
+          id="notes"
+          value={formData.notes}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          placeholder="Any additional information..."
+        />
+      </div>
+      <Button type="submit" className="w-full">
+        {submitLabel}
+      </Button>
+    </form>
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -127,7 +276,10 @@ export default function Injuries() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Injuries</h1>
           <p className="text-muted-foreground">Track and manage athlete injuries</p>
         </div>
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog open={isOpen} onOpenChange={(open) => {
+          setIsOpen(open);
+          if (!open) setFormData(initialFormData);
+        }}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
@@ -139,95 +291,45 @@ export default function Injuries() {
               <DialogTitle>Record New Injury</DialogTitle>
               <DialogDescription>Document an athlete's injury details</DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="athlete">Athlete</Label>
-                <Select value={formData.athlete_id} onValueChange={(value) => setFormData({ ...formData, athlete_id: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select athlete" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {athletes.map((athlete) => (
-                      <SelectItem key={athlete.id} value={athlete.id}>
-                        {athlete.name || "Unnamed Athlete"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="injury_type">Injury Type</Label>
-                  <Input
-                    id="injury_type"
-                    value={formData.injury_type}
-                    onChange={(e) => setFormData({ ...formData, injury_type: e.target.value })}
-                    placeholder="e.g., Sprain, Fracture, Strain"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="body_location">Body Location</Label>
-                  <Input
-                    id="body_location"
-                    value={formData.body_location}
-                    onChange={(e) => setFormData({ ...formData, body_location: e.target.value })}
-                    placeholder="e.g., Left Ankle, Right Knee"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="severity">Severity</Label>
-                  <Select value={formData.severity} onValueChange={(value) => setFormData({ ...formData, severity: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="minor">Minor</SelectItem>
-                      <SelectItem value="moderate">Moderate</SelectItem>
-                      <SelectItem value="severe">Severe</SelectItem>
-                      <SelectItem value="critical">Critical</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="injury_date">Injury Date</Label>
-                  <Input
-                    id="injury_date"
-                    type="date"
-                    value={formData.injury_date}
-                    onChange={(e) => setFormData({ ...formData, injury_date: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="diagnosis">Diagnosis</Label>
-                <Textarea
-                  id="diagnosis"
-                  value={formData.diagnosis}
-                  onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
-                  placeholder="Detailed diagnosis..."
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="notes">Additional Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Any additional information..."
-                />
-              </div>
-              <Button type="submit" className="w-full">
-                Record Injury
-              </Button>
-            </form>
+            <InjuryForm onSubmit={handleSubmit} submitLabel="Record Injury" />
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={(open) => {
+        setIsEditOpen(open);
+        if (!open) {
+          setEditingInjury(null);
+          setFormData(initialFormData);
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Injury</DialogTitle>
+            <DialogDescription>Update the injury details</DialogDescription>
+          </DialogHeader>
+          <InjuryForm onSubmit={handleEditSubmit} submitLabel="Update Injury" />
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Injury Record</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this injury record? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="grid gap-4">
         {injuries.map((injury) => (
@@ -240,11 +342,17 @@ export default function Injuries() {
                     {injury.injury_type} - {injury.body_location}
                   </CardDescription>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
                   <Badge className={getSeverityColor(injury.severity)}>
                     {injury.severity}
                   </Badge>
                   <Badge variant="outline">{injury.status}</Badge>
+                  <Button variant="ghost" size="icon" onClick={() => handleEdit(injury)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => setDeleteId(injury.id)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
                 </div>
               </div>
             </CardHeader>
