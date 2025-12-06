@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, AlertCircle, Pencil, Trash2 } from "lucide-react";
+import { Plus, AlertCircle, Pencil, Trash2, Activity, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -308,6 +308,22 @@ export default function Injuries() {
     </form>
   );
 
+  const stats = useMemo(() => {
+    const severityCounts = {
+      minor: injuries.filter(i => i.severity === "minor").length,
+      moderate: injuries.filter(i => i.severity === "moderate").length,
+      severe: injuries.filter(i => i.severity === "severe").length,
+      critical: injuries.filter(i => i.severity === "critical").length,
+    };
+    const statusCounts = {
+      active: injuries.filter(i => i.status === "active" || !i.status).length,
+      in_treatment: injuries.filter(i => i.status === "in_treatment").length,
+      recovered: injuries.filter(i => i.status === "recovered").length,
+      closed: injuries.filter(i => i.status === "closed").length,
+    };
+    return { severityCounts, statusCounts, total: injuries.length };
+  }, [injuries]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -333,6 +349,85 @@ export default function Injuries() {
             <InjuryForm onSubmit={handleSubmit} submitLabel="Record Injury" />
           </DialogContent>
         </Dialog>
+      </div>
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+        {/* Severity Stats */}
+        <Card className="bg-success/10 border-success/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-success" />
+              <span className="text-xs font-medium text-muted-foreground">Minor</span>
+            </div>
+            <p className="text-2xl font-bold text-success">{stats.severityCounts.minor}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-warning/10 border-warning/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-warning" />
+              <span className="text-xs font-medium text-muted-foreground">Moderate</span>
+            </div>
+            <p className="text-2xl font-bold text-warning">{stats.severityCounts.moderate}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-danger/10 border-danger/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-danger" />
+              <span className="text-xs font-medium text-muted-foreground">Severe</span>
+            </div>
+            <p className="text-2xl font-bold text-danger">{stats.severityCounts.severe}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-destructive/10 border-destructive/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <XCircle className="h-4 w-4 text-destructive" />
+              <span className="text-xs font-medium text-muted-foreground">Critical</span>
+            </div>
+            <p className="text-2xl font-bold text-destructive">{stats.severityCounts.critical}</p>
+          </CardContent>
+        </Card>
+
+        {/* Status Stats */}
+        <Card className="bg-destructive/10 border-destructive/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-destructive" />
+              <span className="text-xs font-medium text-muted-foreground">Active</span>
+            </div>
+            <p className="text-2xl font-bold text-destructive">{stats.statusCounts.active}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-warning/10 border-warning/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-warning" />
+              <span className="text-xs font-medium text-muted-foreground">Treatment</span>
+            </div>
+            <p className="text-2xl font-bold text-warning">{stats.statusCounts.in_treatment}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-success/10 border-success/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-success" />
+              <span className="text-xs font-medium text-muted-foreground">Recovered</span>
+            </div>
+            <p className="text-2xl font-bold text-success">{stats.statusCounts.recovered}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-muted border-muted-foreground/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground">Closed</span>
+            </div>
+            <p className="text-2xl font-bold text-muted-foreground">{stats.statusCounts.closed}</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Edit Dialog */}
