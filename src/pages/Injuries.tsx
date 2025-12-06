@@ -165,6 +165,20 @@ export default function Injuries() {
     setDeleteId(null);
   };
 
+  const handleStatusUpdate = async (injuryId: string, newStatus: string) => {
+    const { error } = await supabase
+      .from("injuries")
+      .update({ status: newStatus })
+      .eq("id", injuryId);
+
+    if (error) {
+      toast.error(`Failed to update status: ${error.message}`);
+    } else {
+      toast.success("Status updated successfully");
+      loadInjuries();
+    }
+  };
+
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case "minor":
@@ -346,7 +360,17 @@ export default function Injuries() {
                   <Badge className={getSeverityColor(injury.severity)}>
                     {injury.severity}
                   </Badge>
-                  <Badge variant="outline">{injury.status}</Badge>
+                  <Select value={injury.status || "active"} onValueChange={(value) => handleStatusUpdate(injury.id, value)}>
+                    <SelectTrigger className="w-[130px] h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="in_treatment">In Treatment</SelectItem>
+                      <SelectItem value="recovered">Recovered</SelectItem>
+                      <SelectItem value="closed">Closed</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Button variant="ghost" size="icon" onClick={() => handleEdit(injury)}>
                     <Pencil className="h-4 w-4" />
                   </Button>
