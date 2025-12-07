@@ -9,9 +9,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, AlertCircle, Pencil, Trash2, Activity, AlertTriangle, CheckCircle, XCircle, Search, X } from "lucide-react";
+import { Plus, AlertCircle, Pencil, Trash2, Activity, AlertTriangle, CheckCircle, XCircle, Search, X, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from "recharts";
+import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 
 interface Injury {
   id: string;
@@ -364,6 +366,34 @@ export default function Injuries() {
 
   const hasActiveFilters = searchQuery !== "" || filterAthlete !== "all" || filterSeverity !== "all" || filterStatus !== "all";
 
+  // Injury trends data for chart (last 6 months)
+  const trendData = useMemo(() => {
+    const months = [];
+    const now = new Date();
+    
+    for (let i = 5; i >= 0; i--) {
+      const monthDate = subMonths(now, i);
+      const monthStart = startOfMonth(monthDate);
+      const monthEnd = endOfMonth(monthDate);
+      
+      const monthInjuries = injuries.filter(injury => {
+        const injuryDate = parseISO(injury.injury_date);
+        return isWithinInterval(injuryDate, { start: monthStart, end: monthEnd });
+      });
+      
+      months.push({
+        month: format(monthDate, "MMM yyyy"),
+        total: monthInjuries.length,
+        minor: monthInjuries.filter(i => i.severity === "minor").length,
+        moderate: monthInjuries.filter(i => i.severity === "moderate").length,
+        severe: monthInjuries.filter(i => i.severity === "severe").length,
+        critical: monthInjuries.filter(i => i.severity === "critical").length,
+      });
+    }
+    
+    return months;
+  }, [injuries]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -582,6 +612,103 @@ export default function Injuries() {
               <span className="text-xs font-medium text-muted-foreground">Closed</span>
             </div>
             <p className="text-2xl font-bold text-muted-foreground">{stats.statusCounts.closed}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Injury Trends Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              <CardTitle>Injury Trends</CardTitle>
+            </div>
+            <CardDescription>Total injuries over the last 6 months</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[250px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trendData}>
+                  <defs>
+                    <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis 
+                    dataKey="month" 
+                    tick={{ fontSize: 12 }} 
+                    className="text-muted-foreground"
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 12 }} 
+                    className="text-muted-foreground"
+                    allowDecimals={false}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="total" 
+                    stroke="hsl(var(--primary))" 
+                    fillOpacity={1} 
+                    fill="url(#colorTotal)" 
+                    strokeWidth={2}
+                    name="Total Injuries"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              <CardTitle>Severity Breakdown</CardTitle>
+            </div>
+            <CardDescription>Injuries by severity over the last 6 months</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[250px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis 
+                    dataKey="month" 
+                    tick={{ fontSize: 12 }} 
+                    className="text-muted-foreground"
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 12 }} 
+                    className="text-muted-foreground"
+                    allowDecimals={false}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  />
+                  <Legend />
+                  <Bar dataKey="minor" stackId="a" fill="hsl(var(--success))" name="Minor" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="moderate" stackId="a" fill="hsl(var(--warning))" name="Moderate" />
+                  <Bar dataKey="severe" stackId="a" fill="hsl(var(--danger))" name="Severe" />
+                  <Bar dataKey="critical" stackId="a" fill="hsl(var(--destructive))" name="Critical" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       </div>
