@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, AlertCircle, Pencil, Trash2, Activity, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { Plus, AlertCircle, Pencil, Trash2, Activity, AlertTriangle, CheckCircle, XCircle, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -47,6 +47,12 @@ export default function Injuries() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editingInjury, setEditingInjury] = useState<Injury | null>(null);
   const [formData, setFormData] = useState(initialFormData);
+  
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterAthlete, setFilterAthlete] = useState<string>("all");
+  const [filterSeverity, setFilterSeverity] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
 
   useEffect(() => {
     loadInjuries();
@@ -324,6 +330,40 @@ export default function Injuries() {
     return { severityCounts, statusCounts, total: injuries.length };
   }, [injuries]);
 
+  // Filtered injuries
+  const filteredInjuries = useMemo(() => {
+    return injuries.filter((injury) => {
+      // Search query filter
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch = searchQuery === "" || 
+        injury.athletes?.name?.toLowerCase().includes(searchLower) ||
+        injury.injury_type.toLowerCase().includes(searchLower) ||
+        injury.body_location.toLowerCase().includes(searchLower) ||
+        injury.diagnosis?.toLowerCase().includes(searchLower);
+
+      // Athlete filter
+      const matchesAthlete = filterAthlete === "all" || injury.athlete_id === filterAthlete;
+
+      // Severity filter
+      const matchesSeverity = filterSeverity === "all" || injury.severity === filterSeverity;
+
+      // Status filter
+      const injuryStatus = injury.status || "active";
+      const matchesStatus = filterStatus === "all" || injuryStatus === filterStatus;
+
+      return matchesSearch && matchesAthlete && matchesSeverity && matchesStatus;
+    });
+  }, [injuries, searchQuery, filterAthlete, filterSeverity, filterStatus]);
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setFilterAthlete("all");
+    setFilterSeverity("all");
+    setFilterStatus("all");
+  };
+
+  const hasActiveFilters = searchQuery !== "" || filterAthlete !== "all" || filterSeverity !== "all" || filterStatus !== "all";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -350,6 +390,122 @@ export default function Injuries() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Search and Filters */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by athlete, injury type, location, or diagnosis..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            
+            {/* Athlete Filter */}
+            <Select value={filterAthlete} onValueChange={setFilterAthlete}>
+              <SelectTrigger className="w-full md:w-[180px]">
+                <SelectValue placeholder="All Athletes" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Athletes</SelectItem>
+                {athletes.map((athlete) => (
+                  <SelectItem key={athlete.id} value={athlete.id}>
+                    {athlete.name || "Unnamed Athlete"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Severity Filter */}
+            <Select value={filterSeverity} onValueChange={setFilterSeverity}>
+              <SelectTrigger className="w-full md:w-[140px]">
+                <SelectValue placeholder="All Severities" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Severities</SelectItem>
+                <SelectItem value="minor">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-success" />
+                    Minor
+                  </span>
+                </SelectItem>
+                <SelectItem value="moderate">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-warning" />
+                    Moderate
+                  </span>
+                </SelectItem>
+                <SelectItem value="severe">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-danger" />
+                    Severe
+                  </span>
+                </SelectItem>
+                <SelectItem value="critical">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-destructive" />
+                    Critical
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Status Filter */}
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-full md:w-[150px]">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-destructive" />
+                    Active
+                  </span>
+                </SelectItem>
+                <SelectItem value="in_treatment">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-warning" />
+                    In Treatment
+                  </span>
+                </SelectItem>
+                <SelectItem value="recovered">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-success" />
+                    Recovered
+                  </span>
+                </SelectItem>
+                <SelectItem value="closed">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-muted-foreground" />
+                    Closed
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Clear Filters */}
+            {hasActiveFilters && (
+              <Button variant="outline" onClick={clearFilters} className="gap-2">
+                <X className="h-4 w-4" />
+                Clear
+              </Button>
+            )}
+          </div>
+          
+          {/* Results count */}
+          {hasActiveFilters && (
+            <p className="text-sm text-muted-foreground mt-3">
+              Showing {filteredInjuries.length} of {injuries.length} injuries
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
@@ -466,7 +622,25 @@ export default function Injuries() {
       </AlertDialog>
 
       <div className="grid gap-4">
-        {injuries.map((injury) => (
+        {filteredInjuries.length === 0 ? (
+          <Card className="shadow-card">
+            <CardContent className="p-8 text-center">
+              <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-lg font-medium text-foreground">No injuries found</p>
+              <p className="text-sm text-muted-foreground">
+                {hasActiveFilters 
+                  ? "Try adjusting your search or filter criteria" 
+                  : "No injury records have been created yet"}
+              </p>
+              {hasActiveFilters && (
+                <Button variant="outline" onClick={clearFilters} className="mt-4">
+                  Clear Filters
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          filteredInjuries.map((injury) => (
           <Card key={injury.id} className="shadow-card">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -535,7 +709,8 @@ export default function Injuries() {
               </div>
             </CardContent>
           </Card>
-        ))}
+        ))
+        )}
       </div>
     </div>
   );
