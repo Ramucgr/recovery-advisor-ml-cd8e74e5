@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, AlertCircle, Pencil, Trash2, Activity, AlertTriangle, CheckCircle, XCircle, Search, X, TrendingUp, User, Download, FileText } from "lucide-react";
+import { Plus, AlertCircle, Pencil, Trash2, Activity, AlertTriangle, CheckCircle, XCircle, Search, X, TrendingUp, User, Download, FileText, Clock } from "lucide-react";
 import { useExportInjuries } from "@/hooks/useExportInjuries";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,6 +27,8 @@ interface Injury {
   diagnosis: string;
   status: string;
   notes: string;
+  expected_recovery_days: number | null;
+  actual_recovery_days: number | null;
   athletes: {
     name: string;
   };
@@ -438,6 +440,21 @@ export default function Injuries() {
     "hsl(var(--muted-foreground))",
   ];
 
+  // Recovery timeline data - comparing expected vs actual recovery days
+  const recoveryTimelineData = useMemo(() => {
+    return injuries
+      .filter((injury) => injury.expected_recovery_days || injury.actual_recovery_days)
+      .slice(0, 10) // Limit to 10 most recent
+      .map((injury) => ({
+        name: `${injury.athletes?.name?.split(' ')[0] || 'Unknown'} - ${injury.injury_type}`.substring(0, 25),
+        expected: injury.expected_recovery_days || 0,
+        actual: injury.actual_recovery_days || 0,
+        difference: (injury.actual_recovery_days || 0) - (injury.expected_recovery_days || 0),
+        status: injury.status,
+      }))
+      .reverse(); // Show oldest to newest
+  }, [injuries]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -767,7 +784,62 @@ export default function Injuries() {
         </Card>
       </div>
 
-      {/* Body Location Heatmap & Injury Type Pie Chart */}
+      {/* Recovery Timeline Chart */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-primary" />
+            <CardTitle>Recovery Timeline</CardTitle>
+          </div>
+          <CardDescription>Expected vs actual recovery days for injuries</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {recoveryTimelineData.length > 0 ? (
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={recoveryTimelineData} layout="vertical" margin={{ left: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis 
+                    type="number" 
+                    tick={{ fontSize: 12 }} 
+                    className="text-muted-foreground"
+                    label={{ value: 'Days', position: 'insideBottomRight', offset: -5 }}
+                  />
+                  <YAxis 
+                    type="category" 
+                    dataKey="name" 
+                    tick={{ fontSize: 11 }} 
+                    className="text-muted-foreground"
+                    width={120}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                    formatter={(value: number, name: string) => [
+                      `${value} days`,
+                      name === 'expected' ? 'Expected' : 'Actual'
+                    ]}
+                  />
+                  <Legend />
+                  <Bar dataKey="expected" fill="hsl(var(--primary))" name="Expected" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="actual" fill="hsl(var(--warning))" name="Actual" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-[200px] flex flex-col items-center justify-center text-muted-foreground">
+              <Clock className="h-12 w-12 mb-3 opacity-50" />
+              <p>No recovery data available</p>
+              <p className="text-sm">Add expected/actual recovery days to injuries to see this chart</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
