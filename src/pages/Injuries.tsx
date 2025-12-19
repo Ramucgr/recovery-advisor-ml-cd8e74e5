@@ -42,6 +42,8 @@ const initialFormData = {
   injury_date: "",
   diagnosis: "",
   notes: "",
+  expected_recovery_days: "",
+  actual_recovery_days: "",
 };
 
 export default function Injuries() {
@@ -104,6 +106,8 @@ export default function Injuries() {
       injury_date: formData.injury_date,
       diagnosis: formData.diagnosis,
       notes: formData.notes,
+      expected_recovery_days: formData.expected_recovery_days ? parseInt(formData.expected_recovery_days) : null,
+      actual_recovery_days: formData.actual_recovery_days ? parseInt(formData.actual_recovery_days) : null,
       created_by: user.id,
     }]).select().single();
 
@@ -144,6 +148,8 @@ export default function Injuries() {
       injury_date: injury.injury_date,
       diagnosis: injury.diagnosis || "",
       notes: injury.notes || "",
+      expected_recovery_days: injury.expected_recovery_days?.toString() || "",
+      actual_recovery_days: injury.actual_recovery_days?.toString() || "",
     });
     setIsEditOpen(true);
   };
@@ -163,6 +169,8 @@ export default function Injuries() {
         injury_date: formData.injury_date,
         diagnosis: formData.diagnosis,
         notes: formData.notes,
+        expected_recovery_days: formData.expected_recovery_days ? parseInt(formData.expected_recovery_days) : null,
+        actual_recovery_days: formData.actual_recovery_days ? parseInt(formData.actual_recovery_days) : null,
       })
       .eq("id", editingInjury.id);
 
@@ -321,6 +329,32 @@ export default function Injuries() {
           onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
           placeholder="Detailed diagnosis..."
         />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="expected_recovery_days">Expected Recovery (days)</Label>
+          <Input
+            id="expected_recovery_days"
+            type="number"
+            min="0"
+            max="365"
+            value={formData.expected_recovery_days}
+            onChange={(e) => setFormData({ ...formData, expected_recovery_days: e.target.value })}
+            placeholder="e.g., 14"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="actual_recovery_days">Actual Recovery (days)</Label>
+          <Input
+            id="actual_recovery_days"
+            type="number"
+            min="0"
+            max="365"
+            value={formData.actual_recovery_days}
+            onChange={(e) => setFormData({ ...formData, actual_recovery_days: e.target.value })}
+            placeholder="e.g., 21"
+          />
+        </div>
       </div>
       <div className="space-y-2">
         <Label htmlFor="notes">Additional Notes</Label>
