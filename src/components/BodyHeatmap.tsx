@@ -38,77 +38,148 @@ const bodyParts = [
 ];
 
 const normalizeLocation = (location: string): string[] => {
-  const lower = location.toLowerCase();
+  const lower = location.toLowerCase().trim();
   const matches: string[] = [];
   
-  // Map common injury location terms to body part IDs
+  // Map common injury location terms to body part IDs (including typos and no-space variants)
   const mappings: Record<string, string[]> = {
+    // Head & Neck
     "head": ["head"],
     "skull": ["head"],
     "face": ["head"],
     "neck": ["neck"],
     "cervical": ["neck"],
+    
+    // Shoulders
     "shoulder": ["left_shoulder", "right_shoulder"],
+    "leftshoulder": ["left_shoulder"],
     "left shoulder": ["left_shoulder"],
+    "rightshoulder": ["right_shoulder"],
     "right shoulder": ["right_shoulder"],
+    
+    // Chest & Core
     "chest": ["chest"],
     "thorax": ["chest"],
     "rib": ["chest"],
-    "arm": ["left_arm", "right_arm"],
-    "left arm": ["left_arm"],
-    "right arm": ["right_arm"],
-    "upper arm": ["left_arm", "right_arm"],
-    "bicep": ["left_arm", "right_arm"],
-    "elbow": ["left_elbow", "right_elbow"],
-    "left elbow": ["left_elbow"],
-    "right elbow": ["right_elbow"],
-    "forearm": ["left_forearm", "right_forearm"],
-    "left forearm": ["left_forearm"],
-    "right forearm": ["right_forearm"],
-    "wrist": ["left_wrist", "right_wrist"],
-    "left wrist": ["left_wrist"],
-    "right wrist": ["right_wrist"],
-    "hand": ["left_hand", "right_hand"],
-    "left hand": ["left_hand"],
-    "right hand": ["right_hand"],
-    "finger": ["left_hand", "right_hand"],
     "abdomen": ["abdomen"],
     "stomach": ["abdomen"],
     "core": ["abdomen"],
+    
+    // Arms
+    "arm": ["left_arm", "right_arm"],
+    "leftarm": ["left_arm"],
+    "left arm": ["left_arm"],
+    "rightarm": ["right_arm"],
+    "right arm": ["right_arm"],
+    "upper arm": ["left_arm", "right_arm"],
+    "upperarm": ["left_arm", "right_arm"],
+    "bicep": ["left_arm", "right_arm"],
+    
+    // Elbows
+    "elbow": ["left_elbow", "right_elbow"],
+    "leftelbow": ["left_elbow"],
+    "left elbow": ["left_elbow"],
+    "rightelbow": ["right_elbow"],
+    "right elbow": ["right_elbow"],
+    
+    // Forearms
+    "forearm": ["left_forearm", "right_forearm"],
+    "leftforearm": ["left_forearm"],
+    "left forearm": ["left_forearm"],
+    "rightforearm": ["right_forearm"],
+    "right forearm": ["right_forearm"],
+    
+    // Wrists
+    "wrist": ["left_wrist", "right_wrist"],
+    "leftwrist": ["left_wrist"],
+    "left wrist": ["left_wrist"],
+    "rightwrist": ["right_wrist"],
+    "right wrist": ["right_wrist"],
+    
+    // Hands
+    "hand": ["left_hand", "right_hand"],
+    "lefthand": ["left_hand"],
+    "left hand": ["left_hand"],
+    "righthand": ["right_hand"],
+    "right hand": ["right_hand"],
+    "finger": ["left_hand", "right_hand"],
+    
+    // Back & Hip
     "back": ["lower_back"],
+    "lowerback": ["lower_back"],
     "lower back": ["lower_back"],
     "lumbar": ["lower_back"],
     "spine": ["lower_back", "neck"],
     "hip": ["hip"],
     "pelvis": ["hip"],
     "groin": ["hip"],
+    
+    // Thighs
     "thigh": ["left_thigh", "right_thigh"],
+    "leftthigh": ["left_thigh"],
     "left thigh": ["left_thigh"],
+    "rightthigh": ["right_thigh"],
     "right thigh": ["right_thigh"],
     "quadricep": ["left_thigh", "right_thigh"],
+    "quad": ["left_thigh", "right_thigh"],
     "hamstring": ["left_thigh", "right_thigh"],
+    
+    // Knees
     "knee": ["left_knee", "right_knee"],
+    "leftknee": ["left_knee"],
     "left knee": ["left_knee"],
+    "rightknee": ["right_knee"],
     "right knee": ["right_knee"],
+    
+    // Shins & Calves
     "shin": ["left_shin", "right_shin"],
+    "leftshin": ["left_shin"],
     "left shin": ["left_shin"],
+    "rightshin": ["right_shin"],
     "right shin": ["right_shin"],
     "calf": ["left_shin", "right_shin"],
+    "leftcalf": ["left_shin"],
+    "rightcalf": ["right_shin"],
+    
+    // Legs (general)
     "leg": ["left_thigh", "right_thigh", "left_shin", "right_shin"],
+    "leftleg": ["left_thigh", "left_shin"],
     "left leg": ["left_thigh", "left_shin"],
+    "rightleg": ["right_thigh", "right_shin"],
     "right leg": ["right_thigh", "right_shin"],
+    
+    // Ankles (including typos)
     "ankle": ["left_ankle", "right_ankle"],
+    "ancle": ["left_ankle", "right_ankle"],
+    "leftankle": ["left_ankle"],
     "left ankle": ["left_ankle"],
+    "leftancle": ["left_ankle"],
+    "rightankle": ["right_ankle"],
     "right ankle": ["right_ankle"],
+    "rightancle": ["right_ankle"],
+    "achilles": ["left_ankle", "right_ankle"],
+    
+    // Feet
     "foot": ["left_foot", "right_foot"],
+    "feet": ["left_foot", "right_foot"],
+    "leftfoot": ["left_foot"],
     "left foot": ["left_foot"],
+    "rightfoot": ["right_foot"],
     "right foot": ["right_foot"],
     "toe": ["left_foot", "right_foot"],
-    "achilles": ["left_ankle", "right_ankle"],
+    
+    // Body (general)
+    "body": ["chest", "abdomen"],
   };
 
+  // First try exact match
+  if (mappings[lower]) {
+    return mappings[lower];
+  }
+
+  // Then try includes match for partial terms
   for (const [key, value] of Object.entries(mappings)) {
-    if (lower.includes(key)) {
+    if (lower.includes(key) || key.includes(lower)) {
       matches.push(...value);
     }
   }
