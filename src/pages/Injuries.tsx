@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, AlertCircle, Pencil, Trash2, Activity, AlertTriangle, CheckCircle, XCircle, Search, X, TrendingUp, User } from "lucide-react";
+import { Plus, AlertCircle, Pencil, Trash2, Activity, AlertTriangle, CheckCircle, XCircle, Search, X, TrendingUp, User, Download, FileText } from "lucide-react";
+import { useExportInjuries } from "@/hooks/useExportInjuries";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from "recharts";
@@ -43,6 +44,7 @@ const initialFormData = {
 
 export default function Injuries() {
   const { user } = useAuth();
+  const { exportToCSV, exportToPDF } = useExportInjuries();
   const [injuries, setInjuries] = useState<Injury[]>([]);
   const [athletes, setAthletes] = useState<any[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -402,24 +404,34 @@ export default function Injuries() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Injuries</h1>
           <p className="text-muted-foreground">Track and manage athlete injuries</p>
         </div>
-        <Dialog open={isOpen} onOpenChange={(open) => {
-          setIsOpen(open);
-          if (!open) setFormData(initialFormData);
-        }}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Record Injury
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Record New Injury</DialogTitle>
-              <DialogDescription>Document an athlete's injury details</DialogDescription>
-            </DialogHeader>
-            <InjuryForm onSubmit={handleSubmit} submitLabel="Record Injury" />
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => exportToCSV(filteredInjuries)} className="gap-2">
+            <Download className="h-4 w-4" />
+            CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => exportToPDF(filteredInjuries)} className="gap-2">
+            <FileText className="h-4 w-4" />
+            PDF
+          </Button>
+          <Dialog open={isOpen} onOpenChange={(open) => {
+            setIsOpen(open);
+            if (!open) setFormData(initialFormData);
+          }}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Record Injury
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Record New Injury</DialogTitle>
+                <DialogDescription>Document an athlete's injury details</DialogDescription>
+              </DialogHeader>
+              <InjuryForm onSubmit={handleSubmit} submitLabel="Record Injury" />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Search and Filters */}
