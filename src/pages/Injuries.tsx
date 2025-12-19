@@ -94,7 +94,7 @@ export default function Injuries() {
       return;
     }
 
-    const { error } = await supabase.from("injuries").insert([{
+    const { data: injuryData, error } = await supabase.from("injuries").insert([{
       athlete_id: formData.athlete_id,
       injury_type: formData.injury_type,
       body_location: formData.body_location,
@@ -103,13 +103,29 @@ export default function Injuries() {
       diagnosis: formData.diagnosis,
       notes: formData.notes,
       created_by: user.id,
-    }]);
+    }]).select().single();
 
     if (error) {
       console.error("Insert error:", error);
       toast.error(`Failed to record injury: ${error.message}`);
     } else {
       toast.success("Injury recorded successfully");
+      
+      // Create notification for critical or severe injuries
+      if (formData.severity === "critical" || formData.severity === "severe") {
+        const athlete = athletes.find(a => a.id === formData.athlete_id);
+        const athleteName = athlete?.name || "Unknown Athlete";
+        
+        await supabase.from("notifications").insert({
+          user_id: user.id,
+          athlete_id: formData.athlete_id,
+          type: "risk_warning" as const,
+          title: `${formData.severity === "critical" ? "🚨 Critical" : "⚠️ Severe"} Injury Recorded`,
+          message: `A ${formData.severity} ${formData.injury_type} injury has been recorded for ${athleteName} (${formData.body_location}).`,
+          link: "/injuries",
+        });
+      }
+      
       setIsOpen(false);
       loadInjuries();
       setFormData(initialFormData);
