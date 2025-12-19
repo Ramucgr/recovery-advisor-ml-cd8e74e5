@@ -13,7 +13,7 @@ import { Plus, AlertCircle, Pencil, Trash2, Activity, AlertTriangle, CheckCircle
 import { useExportInjuries } from "@/hooks/useExportInjuries";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, PieChart, Pie, Cell } from "recharts";
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 import BodyHeatmap from "@/components/BodyHeatmap";
 
@@ -397,6 +397,31 @@ export default function Injuries() {
     return months;
   }, [injuries]);
 
+  // Injury type distribution for pie chart
+  const injuryTypeData = useMemo(() => {
+    const typeCounts: Record<string, number> = {};
+    injuries.forEach((injury) => {
+      const type = injury.injury_type || "Unknown";
+      typeCounts[type] = (typeCounts[type] || 0) + 1;
+    });
+
+    return Object.entries(typeCounts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8); // Top 8 injury types
+  }, [injuries]);
+
+  const PIE_COLORS = [
+    "hsl(var(--primary))",
+    "hsl(var(--success))",
+    "hsl(var(--warning))",
+    "hsl(var(--danger))",
+    "hsl(var(--destructive))",
+    "hsl(var(--accent))",
+    "hsl(var(--secondary))",
+    "hsl(var(--muted-foreground))",
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -726,19 +751,82 @@ export default function Injuries() {
         </Card>
       </div>
 
-      {/* Body Location Heatmap */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-primary" />
-            <CardTitle>Body Location Heatmap</CardTitle>
-          </div>
-          <CardDescription>Visual representation of injury locations across all athletes</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <BodyHeatmap injuries={injuries} />
-        </CardContent>
-      </Card>
+      {/* Body Location Heatmap & Injury Type Pie Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <User className="h-5 w-5 text-primary" />
+              <CardTitle>Body Location Heatmap</CardTitle>
+            </div>
+            <CardDescription>Visual representation of injury locations across all athletes</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <BodyHeatmap injuries={injuries} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-primary" />
+              <CardTitle>Injury Type Distribution</CardTitle>
+            </div>
+            <CardDescription>Breakdown of injuries by type</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {injuryTypeData.length > 0 ? (
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={injuryTypeData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={2}
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                      labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
+                    >
+                      {injuryTypeData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                      }}
+                      formatter={(value: number) => [`${value} injuries`, "Count"]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No injury data available
+              </div>
+            )}
+            {injuryTypeData.length > 0 && (
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {injuryTypeData.slice(0, 6).map((item, index) => (
+                  <div key={item.name} className="flex items-center gap-2 text-sm">
+                    <span
+                      className="w-3 h-3 rounded-full shrink-0"
+                      style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}
+                    />
+                    <span className="truncate text-muted-foreground">{item.name}</span>
+                    <span className="font-medium ml-auto">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Edit Dialog */}
       <Dialog open={isEditOpen} onOpenChange={(open) => {
