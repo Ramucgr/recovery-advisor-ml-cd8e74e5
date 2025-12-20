@@ -256,24 +256,24 @@ export default function ExerciseLibrary() {
             className="pl-10"
           />
         </div>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+        <Select value={categoryFilter || "all"} onValueChange={(v) => setCategoryFilter(v === "all" ? "" : v)}>
           <SelectTrigger className="w-[180px]">
             <Filter className="h-4 w-4 mr-2" />
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Categories</SelectItem>
+            <SelectItem value="all">All Categories</SelectItem>
             {categories.map((c) => (
               <SelectItem key={c.value} value={c.value}>{c.icon} {c.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
+        <Select value={difficultyFilter || "all"} onValueChange={(v) => setDifficultyFilter(v === "all" ? "" : v)}>
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="Difficulty" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Levels</SelectItem>
+            <SelectItem value="all">All Levels</SelectItem>
             {difficulties.map((d) => (
               <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
             ))}
