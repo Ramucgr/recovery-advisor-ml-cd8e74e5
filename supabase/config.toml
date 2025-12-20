@@ -2,3 +2,9 @@ project_id = "qqvllfidzvubyttuermk"
 
 [functions.predict-injury-risk]
 verify_jwt = false
+
+[functions.recommend-exercises]
+verify_jwt = false
+
+[functions.analyze-training-load]
+verify_jwt = false

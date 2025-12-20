@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Activity, Calendar, Target, CheckCircle2, Dumbbell, Clock, X, Search, Circle, Check, History } from "lucide-react";
+import { Plus, Activity, Calendar, Target, CheckCircle2, Dumbbell, Clock, X, Search, Circle, Check, History, Sparkles, Loader2, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { CompletionHistory } from "@/components/CompletionHistory";
@@ -71,10 +71,24 @@ interface ExerciseCompletion {
   notes: string | null;
 }
 
+interface AIExerciseRecommendation {
+  recommendedExercises: Array<{
+    exerciseName: string;
+    priority: string;
+    setsRecommended?: number;
+    repsRecommended?: number;
+    frequency?: string;
+    notes: string;
+  }>;
+  exercisesToAvoid: string[];
+  progressionPlan: string;
+  warningsSigns: string[];
+  overallGuidance: string;
+}
 export default function Rehabilitation() {
   const { user } = useAuth();
   const [rehabPlans, setRehabPlans] = useState<RehabPlan[]>([]);
-  const [athletes, setAthletes] = useState<{ id: string; name: string }[]>([]);
+  const [athletes, setAthletes] = useState<{ id: string; name: string; sport?: string; fitness_level?: string | null }[]>([]);
   const [injuries, setInjuries] = useState<any[]>([]);
   const [exerciseLibrary, setExerciseLibrary] = useState<Exercise[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<RehabPlan | null>(null);
@@ -88,6 +102,8 @@ export default function Rehabilitation() {
   const [todayCompletions, setTodayCompletions] = useState<ExerciseCompletion[]>([]);
   const [allCompletions, setAllCompletions] = useState<ExerciseCompletion[]>([]);
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split("T")[0]);
+  const [isAILoading, setIsAILoading] = useState(false);
+  const [aiRecommendations, setAiRecommendations] = useState<AIExerciseRecommendation | null>(null);
 
   const [formData, setFormData] = useState({
     athlete_id: "",
@@ -130,7 +146,7 @@ export default function Rehabilitation() {
   };
 
   const loadAthletes = async () => {
-    const { data } = await supabase.from("athletes").select("id, name");
+    const { data } = await supabase.from("athletes").select("id, name, sport, fitness_level");
     setAthletes(data || []);
   };
 
@@ -420,6 +436,7 @@ export default function Rehabilitation() {
   const handlePlanClick = (plan: RehabPlan) => {
     setSelectedPlan(plan);
     setSessionDate(new Date().toISOString().split("T")[0]);
+    setAiRecommendations(null);
     loadProgress(plan.id);
     loadPlanExercises(plan.id);
     loadTodayCompletions(plan.id, new Date().toISOString().split("T")[0]);
@@ -430,6 +447,82 @@ export default function Rehabilitation() {
     setSessionDate(newDate);
     if (selectedPlan) {
       loadTodayCompletions(selectedPlan.id, newDate);
+    }
+  };
+
+  const handleAIRecommend = async () => {
+    if (!selectedPlan) return;
+
+    const injury = injuries.find(i => i.athlete_id === selectedPlan.athlete_id);
+    if (!injury) {
+      toast.error("No active injury found for this athlete");
+      return;
+    }
+
+    const athlete = athletes.find(a => a.id === selectedPlan.athlete_id);
+    
+    setIsAILoading(true);
+    setAiRecommendations(null);
+
+    try {
+      const daysSinceInjury = Math.floor(
+        (Date.now() - new Date(injury.injury_date).getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      // Determine rehab phase
+      let currentPhase = "early";
+      if (daysSinceInjury > 21) currentPhase = "late";
+      else if (daysSinceInjury > 7) currentPhase = "intermediate";
+
+      const response = await supabase.functions.invoke("recommend-exercises", {
+        body: {
+          injury: {
+            type: injury.injury_type,
+            location: injury.body_location,
+            severity: injury.severity,
+            daysSinceInjury,
+            currentPhase,
+          },
+          athlete: {
+            sport: athlete?.sport || "General",
+            fitnessLevel: athlete?.fitness_level,
+            age: null,
+          },
+          availableExercises: exerciseLibrary.slice(0, 30).map(e => ({
+            id: e.id,
+            name: e.name,
+            body_part: e.body_part,
+            category: e.category,
+            difficulty: e.difficulty,
+            description: e.description,
+          })),
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Recommendation failed");
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      setAiRecommendations(response.data as AIExerciseRecommendation);
+      toast.success("AI recommendations generated");
+    } catch (error) {
+      console.error("AI recommendation error:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to get recommendations");
+    } finally {
+      setIsAILoading(false);
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "essential": return "bg-destructive/20 text-destructive";
+      case "recommended": return "bg-primary/20 text-primary";
+      case "optional": return "bg-muted text-muted-foreground";
+      default: return "bg-muted text-muted-foreground";
     }
   };
 
