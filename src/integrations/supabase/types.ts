@@ -570,6 +570,57 @@ export type Database = {
         }
         Relationships: []
       }
+      rehab_plan_exercises: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          exercise_id: string
+          id: string
+          notes: string | null
+          order_index: number | null
+          rehab_plan_id: string
+          reps: number | null
+          sets: number | null
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          exercise_id: string
+          id?: string
+          notes?: string | null
+          order_index?: number | null
+          rehab_plan_id: string
+          reps?: number | null
+          sets?: number | null
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          exercise_id?: string
+          id?: string
+          notes?: string | null
+          order_index?: number | null
+          rehab_plan_id?: string
+          reps?: number | null
+          sets?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rehab_plan_exercises_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_library"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rehab_plan_exercises_rehab_plan_id_fkey"
+            columns: ["rehab_plan_id"]
+            isOneToOne: false
+            referencedRelation: "rehab_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rehab_plans: {
         Row: {
           actual_end_date: string | null
