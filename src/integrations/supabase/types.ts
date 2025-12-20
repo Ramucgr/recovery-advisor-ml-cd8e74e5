@@ -124,6 +124,60 @@ export type Database = {
         }
         Relationships: []
       }
+      exercise_completions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          pain_level: number | null
+          plan_exercise_id: string
+          rehab_plan_id: string
+          reps_completed: number | null
+          session_date: string
+          sets_completed: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          pain_level?: number | null
+          plan_exercise_id: string
+          rehab_plan_id: string
+          reps_completed?: number | null
+          session_date?: string
+          sets_completed?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          pain_level?: number | null
+          plan_exercise_id?: string
+          rehab_plan_id?: string
+          reps_completed?: number | null
+          session_date?: string
+          sets_completed?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_completions_plan_exercise_id_fkey"
+            columns: ["plan_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "rehab_plan_exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_completions_rehab_plan_id_fkey"
+            columns: ["rehab_plan_id"]
+            isOneToOne: false
+            referencedRelation: "rehab_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercise_library: {
         Row: {
           body_part: string
