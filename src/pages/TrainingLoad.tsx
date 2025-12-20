@@ -239,10 +239,10 @@ export default function TrainingLoad() {
       {/* Athlete Filter */}
       <div className="flex gap-4 items-center">
         <Label>Filter by Athlete:</Label>
-        <Select value={selectedAthlete} onValueChange={setSelectedAthlete}>
+        <Select value={selectedAthlete || "all"} onValueChange={(v) => setSelectedAthlete(v === "all" ? "" : v)}>
           <SelectTrigger className="w-[200px]"><SelectValue placeholder="All Athletes" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Athletes</SelectItem>
+            <SelectItem value="all">All Athletes</SelectItem>
             {athletes.map((a) => (
               <SelectItem key={a.id} value={a.id}>{a.name || "Unnamed Athlete"}</SelectItem>
             ))}
