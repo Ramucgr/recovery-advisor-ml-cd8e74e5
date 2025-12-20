@@ -11,10 +11,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Activity, Calendar, Target, CheckCircle2, Dumbbell, Clock, X, Search, Circle, Check } from "lucide-react";
+import { Plus, Activity, Calendar, Target, CheckCircle2, Dumbbell, Clock, X, Search, Circle, Check, History } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-
+import { CompletionHistory } from "@/components/CompletionHistory";
 interface RehabPlan {
   id: string;
   plan_name: string;
@@ -86,6 +86,7 @@ export default function Rehabilitation() {
   const [exerciseSearch, setExerciseSearch] = useState("");
   const [selectedExercises, setSelectedExercises] = useState<string[]>([]);
   const [todayCompletions, setTodayCompletions] = useState<ExerciseCompletion[]>([]);
+  const [allCompletions, setAllCompletions] = useState<ExerciseCompletion[]>([]);
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split("T")[0]);
 
   const [formData, setFormData] = useState({
@@ -182,6 +183,15 @@ export default function Rehabilitation() {
     setTodayCompletions(data || []);
   }, []);
 
+  const loadAllCompletions = useCallback(async (planId: string) => {
+    const { data } = await supabase
+      .from("exercise_completions")
+      .select("*")
+      .eq("rehab_plan_id", planId)
+      .order("session_date", { ascending: false });
+    setAllCompletions(data || []);
+  }, []);
+
   const toggleExerciseCompletion = async (planExercise: PlanExercise) => {
     if (!selectedPlan) return;
 
@@ -200,6 +210,9 @@ export default function Rehabilitation() {
         toast.error("Failed to update completion");
       } else {
         setTodayCompletions((prev) =>
+          prev.filter((c) => c.id !== existingCompletion.id)
+        );
+        setAllCompletions((prev) =>
           prev.filter((c) => c.id !== existingCompletion.id)
         );
         toast.success("Exercise marked as incomplete");
@@ -221,7 +234,9 @@ export default function Rehabilitation() {
       if (error) {
         toast.error(`Failed to mark complete: ${error.message}`);
       } else {
-        setTodayCompletions((prev) => [...prev, data as ExerciseCompletion]);
+        const newCompletion = data as ExerciseCompletion;
+        setTodayCompletions((prev) => [...prev, newCompletion]);
+        setAllCompletions((prev) => [newCompletion, ...prev]);
         toast.success("Exercise completed!");
       }
     }
@@ -408,6 +423,7 @@ export default function Rehabilitation() {
     loadProgress(plan.id);
     loadPlanExercises(plan.id);
     loadTodayCompletions(plan.id, new Date().toISOString().split("T")[0]);
+    loadAllCompletions(plan.id);
   };
 
   const handleSessionDateChange = (newDate: string) => {
@@ -673,7 +689,8 @@ export default function Rehabilitation() {
               </CardContent>
             </Card>
 
-            {/* Progress History */}
+            {/* Completion History */}
+            <CompletionHistory completions={allCompletions} planExercises={planExercises} />
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Progress History</CardTitle>
