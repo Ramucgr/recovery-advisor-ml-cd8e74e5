@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Activity, Calendar, Target, CheckCircle2, Dumbbell, Clock, X, Search } from "lucide-react";
+import { Plus, Activity, Calendar, Target, CheckCircle2, Dumbbell, Clock, X, Search, Circle, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -60,6 +60,17 @@ interface PlanExercise {
   exercise_library: Exercise;
 }
 
+interface ExerciseCompletion {
+  id: string;
+  plan_exercise_id: string;
+  session_date: string;
+  completed_at: string;
+  sets_completed: number | null;
+  reps_completed: number | null;
+  pain_level: number | null;
+  notes: string | null;
+}
+
 export default function Rehabilitation() {
   const { user } = useAuth();
   const [rehabPlans, setRehabPlans] = useState<RehabPlan[]>([]);
@@ -74,6 +85,8 @@ export default function Rehabilitation() {
   const [isAddExerciseOpen, setIsAddExerciseOpen] = useState(false);
   const [exerciseSearch, setExerciseSearch] = useState("");
   const [selectedExercises, setSelectedExercises] = useState<string[]>([]);
+  const [todayCompletions, setTodayCompletions] = useState<ExerciseCompletion[]>([]);
+  const [sessionDate, setSessionDate] = useState(new Date().toISOString().split("T")[0]);
 
   const [formData, setFormData] = useState({
     athlete_id: "",
@@ -158,6 +171,74 @@ export default function Rehabilitation() {
       .eq("rehab_plan_id", planId)
       .order("progress_date", { ascending: false });
     setProgress(data || []);
+  };
+
+  const loadTodayCompletions = useCallback(async (planId: string, date: string) => {
+    const { data } = await supabase
+      .from("exercise_completions")
+      .select("*")
+      .eq("rehab_plan_id", planId)
+      .eq("session_date", date);
+    setTodayCompletions(data || []);
+  }, []);
+
+  const toggleExerciseCompletion = async (planExercise: PlanExercise) => {
+    if (!selectedPlan) return;
+
+    const existingCompletion = todayCompletions.find(
+      (c) => c.plan_exercise_id === planExercise.id
+    );
+
+    if (existingCompletion) {
+      // Remove completion
+      const { error } = await supabase
+        .from("exercise_completions")
+        .delete()
+        .eq("id", existingCompletion.id);
+
+      if (error) {
+        toast.error("Failed to update completion");
+      } else {
+        setTodayCompletions((prev) =>
+          prev.filter((c) => c.id !== existingCompletion.id)
+        );
+        toast.success("Exercise marked as incomplete");
+      }
+    } else {
+      // Add completion
+      const { data, error } = await supabase
+        .from("exercise_completions")
+        .insert({
+          rehab_plan_id: selectedPlan.id,
+          plan_exercise_id: planExercise.id,
+          session_date: sessionDate,
+          sets_completed: planExercise.sets,
+          reps_completed: planExercise.reps,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        toast.error(`Failed to mark complete: ${error.message}`);
+      } else {
+        setTodayCompletions((prev) => [...prev, data as ExerciseCompletion]);
+        toast.success("Exercise completed!");
+      }
+    }
+  };
+
+  const isExerciseCompleted = (planExerciseId: string) => {
+    return todayCompletions.some((c) => c.plan_exercise_id === planExerciseId);
+  };
+
+  const getCompletionStats = () => {
+    if (planExercises.length === 0) return { completed: 0, total: 0, percentage: 0 };
+    const completed = planExercises.filter((pe) => isExerciseCompleted(pe.id)).length;
+    return {
+      completed,
+      total: planExercises.length,
+      percentage: Math.round((completed / planExercises.length) * 100),
+    };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -323,8 +404,17 @@ export default function Rehabilitation() {
 
   const handlePlanClick = (plan: RehabPlan) => {
     setSelectedPlan(plan);
+    setSessionDate(new Date().toISOString().split("T")[0]);
     loadProgress(plan.id);
     loadPlanExercises(plan.id);
+    loadTodayCompletions(plan.id, new Date().toISOString().split("T")[0]);
+  };
+
+  const handleSessionDateChange = (newDate: string) => {
+    setSessionDate(newDate);
+    if (selectedPlan) {
+      loadTodayCompletions(selectedPlan.id, newDate);
+    }
   };
 
   return (
@@ -476,62 +566,108 @@ export default function Rehabilitation() {
             {/* Exercises from Library */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Dumbbell className="h-4 w-4" />
-                  Prescribed Exercises
-                </CardTitle>
-                <Button size="sm" onClick={() => { setIsAddExerciseOpen(true); setSelectedExercises([]); }}>
-                  <Plus className="h-4 w-4 mr-1" /> Add Exercises
-                </Button>
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Dumbbell className="h-4 w-4" />
+                    Today's Exercises
+                  </CardTitle>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Label className="text-sm">Session Date:</Label>
+                    <Input
+                      type="date"
+                      value={sessionDate}
+                      onChange={(e) => handleSessionDateChange(e.target.value)}
+                      className="w-auto h-8"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {planExercises.length > 0 && (
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-primary">{getCompletionStats().completed}/{getCompletionStats().total}</p>
+                      <p className="text-xs text-muted-foreground">{getCompletionStats().percentage}% complete</p>
+                    </div>
+                  )}
+                  <Button size="sm" onClick={() => { setIsAddExerciseOpen(true); setSelectedExercises([]); }}>
+                    <Plus className="h-4 w-4 mr-1" /> Add
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {planExercises.length === 0 ? (
                   <p className="text-muted-foreground text-sm">No exercises assigned yet. Add exercises from the library.</p>
                 ) : (
                   <div className="space-y-3">
-                    {planExercises.map((pe) => (
-                      <div key={pe.id} className="flex items-start gap-3 p-3 rounded-lg bg-accent/30">
-                        <CheckCircle2 className="h-5 w-5 text-success mt-0.5" />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">{pe.exercise_library.name}</p>
-                            <Badge className={getDifficultyColor(pe.exercise_library.difficulty)} variant="outline">
-                              {pe.exercise_library.difficulty}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground">{pe.exercise_library.body_part} • {pe.exercise_library.category}</p>
-                          <div className="flex items-center gap-4 mt-2 text-sm">
-                            {pe.sets && pe.reps && (
-                              <span className="flex items-center gap-1">
-                                <Target className="h-3 w-3" /> {pe.sets} sets × {pe.reps} reps
-                              </span>
-                            )}
-                            {pe.duration_seconds && (
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" /> {pe.duration_seconds}s
-                              </span>
-                            )}
-                          </div>
-                          {pe.exercise_library.instructions && pe.exercise_library.instructions.length > 0 && (
-                            <details className="mt-2">
-                              <summary className="text-sm text-primary cursor-pointer">View Instructions</summary>
-                              <ol className="list-decimal list-inside text-sm text-muted-foreground mt-1 space-y-1">
-                                {pe.exercise_library.instructions.map((inst, i) => (
-                                  <li key={i}>{inst}</li>
-                                ))}
-                              </ol>
-                            </details>
-                          )}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => { e.stopPropagation(); removeExerciseFromPlan(pe.id); }}
+                    {planExercises.length > 0 && (
+                      <Progress value={getCompletionStats().percentage} className="h-2 mb-4" />
+                    )}
+                    {planExercises.map((pe) => {
+                      const completed = isExerciseCompleted(pe.id);
+                      return (
+                        <div
+                          key={pe.id}
+                          className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                            completed ? "bg-success/10 border border-success/30" : "bg-accent/30 hover:bg-accent/50"
+                          }`}
+                          onClick={() => toggleExerciseCompletion(pe)}
                         >
-                          <X className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </div>
-                    ))}
+                          <div className="mt-0.5">
+                            {completed ? (
+                              <div className="h-6 w-6 rounded-full bg-success flex items-center justify-center">
+                                <Check className="h-4 w-4 text-white" />
+                              </div>
+                            ) : (
+                              <div className="h-6 w-6 rounded-full border-2 border-muted-foreground/50 flex items-center justify-center">
+                                <Circle className="h-4 w-4 text-muted-foreground/50" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className={`font-medium ${completed ? "line-through text-muted-foreground" : ""}`}>
+                                {pe.exercise_library.name}
+                              </p>
+                              <Badge className={getDifficultyColor(pe.exercise_library.difficulty)} variant="outline">
+                                {pe.exercise_library.difficulty}
+                              </Badge>
+                              {completed && (
+                                <Badge className="bg-success/20 text-success">Done</Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">{pe.exercise_library.body_part} • {pe.exercise_library.category}</p>
+                            <div className="flex items-center gap-4 mt-2 text-sm">
+                              {pe.sets && pe.reps && (
+                                <span className="flex items-center gap-1">
+                                  <Target className="h-3 w-3" /> {pe.sets} sets × {pe.reps} reps
+                                </span>
+                              )}
+                              {pe.duration_seconds && (
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" /> {pe.duration_seconds}s
+                                </span>
+                              )}
+                            </div>
+                            {pe.exercise_library.instructions && pe.exercise_library.instructions.length > 0 && (
+                              <details className="mt-2" onClick={(e) => e.stopPropagation()}>
+                                <summary className="text-sm text-primary cursor-pointer">View Instructions</summary>
+                                <ol className="list-decimal list-inside text-sm text-muted-foreground mt-1 space-y-1">
+                                  {pe.exercise_library.instructions.map((inst, i) => (
+                                    <li key={i}>{inst}</li>
+                                  ))}
+                                </ol>
+                              </details>
+                            )}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); removeExerciseFromPlan(pe.id); }}
+                          >
+                            <X className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
