@@ -12,6 +12,10 @@ import {
   Calendar,
   BarChart3,
   LogOut,
+  MessageSquare,
+  Target,
+  Dumbbell,
+  Flame,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -25,6 +29,11 @@ const navigation = [
   { name: "Athletes", href: "/athletes", icon: Users },
   { name: "Injuries", href: "/injuries", icon: Heart },
   { name: "Rehabilitation", href: "/rehabilitation", icon: Calendar },
+  { name: "Appointments", href: "/appointments", icon: Calendar },
+  { name: "Messages", href: "/messages", icon: MessageSquare },
+  { name: "Goals", href: "/goals", icon: Target },
+  { name: "Training Load", href: "/training-load", icon: Flame },
+  { name: "Exercises", href: "/exercises", icon: Dumbbell },
   { name: "Predictions", href: "/predictions", icon: TrendingUp },
   { name: "Medical Records", href: "/records", icon: FileText },
   { name: "Reports", href: "/reports", icon: BarChart3 },
